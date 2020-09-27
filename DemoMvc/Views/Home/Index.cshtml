@@ -1,0 +1,261 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section head{
+    @Styles.Render("~/Content/toolbar")
+
+    <script type="text/javascript">
+        $(function () {
+            $("#buttonSet0").buttonset();
+            $("#buttonSet1").buttonset();
+            $("#buttonSet2").buttonset();
+
+            var iconSet = [{ icon: "icon_print", text: false }, { icon: "icon_zoomin", text: false }, { icon: "icon_zoomout", text: false }, { icon: "icon_orbit", text: false }, { icon: "icon_bw", text: false }, { icon: "icon_extents", text: false }, { icon: "icon_layers", text: false }, { icon: "icon_select", text: false }, { icon: "icon_line", text: false }, { icon: "icon_poly", text: false }, { icon: "icon_area", text: false }];
+            $("button.nav").each(function (i) {
+                if ((i < iconSet.length)) {
+                    $(this).button({
+                        text: iconSet[i].text,
+                        icons: { primary: iconSet[i].icon }
+                    });
+                } else {
+                    $(this).button();
+                }
+            });
+            $("#dialogLayers").dialog({ autoOpen: false });
+            $("#dialogMeasuring").dialog({ autoOpen: false, close: function (ev, ui) { if (!noClosedMeas) measStart(this, false); } });
+            $("#dialogEntInfo").dialog({ autoOpen: false, width: 450 });
+
+            changeDialogVisibility = function (dlg) {
+                if ($(dlg).dialog("isOpen")) {
+                    $(dlg).dialog("close");
+                } else {
+                    $(dlg).dialog("open");
+                }
+            }
+        });
+    </script>
+
+    <style type="text/css">
+        @@media screen {
+            .nonPrintableArea {
+                display: block;
+            }
+
+            .printableArea {
+                display: none;
+            }
+        }
+
+        @@media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .nonPrintableArea {
+                display: none;
+            }
+
+            .printableArea {
+                display: block;
+            }
+        }
+    </style>
+}
+
+<div class="printableArea">
+    <img id="printImage" onload="window.print()" />
+</div>
+<div class="nonPrintableArea">
+    <div class="nav left makesmaller">
+        <button class="nav" onclick="popupPrint();">@Resources.Global.ButtonPrint</button>
+        <span id="buttonSet0">
+            <button class="nav" onclick="CADControl1.cad.face.zoomIn();">@Resources.Global.ButtonZoomIn</button>
+            <button class="nav" onclick="CADControl1.cad.face.zoomOut();">@Resources.Global.ButtonZoomOut</button>
+            <button class="nav" onclick="CADControl1.cad.orbit.enabled = !CADControl1.cad.orbit.enabled;">@Resources.Global.ButtonOrbit</button>
+        </span>
+        <span id="buttonSet1">
+            <button class="nav" onclick="CADControl1.cad.face.changeBackgroundColor(this);">@Resources.Global.ButtonBackGround</button>
+            <button class="nav" onclick="CADControl1.cad.face.resetView();">@Resources.Global.ButtonFitToWindow</button>
+            <button class="nav" onclick="changeDialogVisibility('#dialogLayers');">@Resources.Global.ButtonLayers</button>
+            <button class="nav" onclick="CADControl1.cad.setInfoEnabled();">@Resources.Global.ButtonInfo</button>
+        </span>
+        <span id="buttonSet2">
+            <button class="nav" onclick="measStart(this, 1)">@Resources.Global.ButtonDistance</button>
+            <button class="nav" onclick="measStart(this, 2)">@Resources.Global.ButtonPolyline</button>
+            <button class="nav" onclick="measStart(this, 3)">@Resources.Global.ButtonArea</button>
+        </span>
+        <select class="nav" id="dropDownlist"></select>
+        <select class="nav" id="viewsDownlist"></select>
+        <select class="nav" id="displayDownlist"></select>
+    </div>
+@*    <form action="/" method="post" enctype="multipart/form-data" name="myForm">
+        <input type="file" name="file" id="file" onchange="sendFile.click()" />
+        <input type="submit" id="sendFile" style="display: none" />
+
+        <input type="submit" value="@Resources.Global.ButtonLoadFromHDD" onclick="document.forms['myForm'].action = '/Home/LoadFromHDD'" />
+        <input type="submit" value="@Resources.Global.ButtonLoadFromWeb" onclick="document.forms['myForm'].action = '/Home/LoadFromWeb'" />
+        <input type="button" value="@Resources.Global.ButtonGetCSV" onclick="document.location = '/Home/GetCSV?guid=' + CADControl1.cad.guid" />
+    </form>*@
+    <div id="dialogLayers" class="makesmaller" title="Layers">
+        <form id="checkBoxlist" >
+        </form>
+    </div>
+    <div id="dialogMeasuring" class="makesmaller" title="Mass">
+        <form id="measuringList" >
+            <label id="lbDistanse" for="edDistance">Distance</label><input id="edDistance" type="text" />
+            <br />
+            <label id="lbDeltaX" for="edDeltaX">Delta X</label><input id="edDeltaX" type="text" />
+            <br />
+            <label id="lbDeltaY" for="edDeltaY">Delta Y</label><input id="edDeltaY" type="text" />
+            <br />
+            <label id="lbPerimeter" for="edPerimeter">Perimeter</label><input id="edPerimeter" type="text" />
+            <br />
+            <label id="lbArea" for="edArea">Area</label><input id="edArea" type="text" />
+            <br />
+            <label id="lbAngle" for="edAngle">Angle</label><input id="edAngle" type="text" />
+        </form>
+    </div>
+    <div id="dialogEntInfo" class="makesmaller" title="Entity info">
+    </div>
+    <br />
+
+    @Html.Partial("CADControl")
+</div>
+
+<script type="text/javascript">
+    CADControl1.cad.face.updateCBL("checkBoxlist");
+    CADControl1.cad.face.updateDDL("dropDownlist");
+
+    var viewsNames = ["Initial View", "-", "Top View", "Bottom View", "Left View", "Right View", "Front View", "Back View", "-", "SW Isometric", "SE Isometric", "NE Isometric", "NW Isometric"];
+    CADControl1.cad.face.updateVDL("viewsDownlist", viewsNames);
+    var displayModes = ["2D Wireframe", "-", "3D Wireframe", "3D Hidden lines", "3D Smooth shading", "3D Flat shading"];
+    CADControl1.cad.face.updateVDL("displayDownlist", displayModes, 100);
+ 
+    cad.get(CADControl1.cad, "mode?" + cad.makeParams({ id: CADControl1.cad.guid }), undefined, function (msg) {
+        if (msg > 0)
+            displayDownlist.selectedIndex = msg;
+    }, null, true);
+
+    var measStart = function (e, t) {
+        var m = CADControl1.cad.measuring;
+        m.start(m.mode != t ? t : 0);
+    }
+
+    var showMeasuring = function (dist, area, perimeter, angle, deltaX, deltaY, isShow) {
+        var dlg = '#dialogMeasuring';
+        var isOpen = false;
+        noClosedMeas = isShow;
+
+        if (cad.utils.browser.msie) {
+            edDistance = document.getElementById("edDistance");
+            edArea = document.getElementById("edArea");
+            edPerimeter = document.getElementById("edPerimeter");
+            edAngle = document.getElementById("edAngle");
+            edDeltaX = document.getElementById("edDeltaX");
+            edDeltaY = document.getElementById("edDeltaY");
+        }
+
+        if (dist) {
+            edDistance.value = dist.toFixed(2);
+            edDistance.style.display = "inline";
+            isOpen = true;
+        } else {
+            edDistance.style.display = "none";
+
+        }
+
+        if (deltaX) {
+            edDeltaX.value = deltaX.toFixed(2);
+            edDeltaX.style.display = "inline";
+            isOpen = true;
+        } else {
+            edDeltaX.style.display = "none";
+        }
+
+        if (deltaY) {
+            edDeltaY.value = deltaY.toFixed(2);
+            edDeltaY.style.display = "inline";
+            isOpen = true;
+        } else {
+            edDeltaY.style.display = "none";
+        }
+
+        if (area) {
+            edArea.value = area.toFixed(2);
+            edArea.style.display = "inline";
+            isOpen = true;
+        } else {
+            edArea.style.display = "none";
+        }
+
+        if (perimeter) {
+            edPerimeter.value = perimeter.toFixed(2);
+            edPerimeter.style.display = "inline";
+            isOpen = true;
+        } else {
+            edPerimeter.style.display = "none";
+        }
+
+        if (angle) {
+            edAngle.value = angle.toFixed(2);
+            edAngle.style.display = "inline";
+            isOpen = true;
+        } else {
+            edAngle.style.display = "none";
+        }
+
+        if (!isShow)
+            isOpen = false;
+        else if (isShow && CADControl1.cad.measuring.mode == 1)
+            isOpen = true;
+
+        if (isOpen) {
+            if (!($(dlg).dialog("isOpen"))) {
+                $(dlg).dialog("open");
+                //$(dlg).dialog('option', 'position', [x,y]);
+            }
+        } else {
+            $(dlg).dialog("close");
+        }
+
+        noClosedMeas = false;
+    }
+
+    CADControl1.cad.measuring.onShowMeasuring = showMeasuring;
+
+    CADControl1.cad.onselect = function (msg) {
+        dialogEntInfo.innerHTML = "";
+        var innerHTML = "<table style=\"width:100%\">";
+        var isOpen = false;
+
+        if (msg) {
+            //var xml = msg.xml;
+            //delete  msg.xml;
+            var isOpen = false;
+
+            for (var i = 0; i < msg.length; i++) {
+                innerHTML += "<tr><td><b>" + msg[i].Key + "</b></td><td>" + msg[i].Value + "</td></tr>";
+                isOpen = true;
+            }
+            dialogEntInfo.innerHTML = innerHTML + "</table>";
+
+            if (isOpen)
+                $(dialogEntInfo).dialog("open");
+        }
+
+        if (!isOpen)
+            $(dialogEntInfo).dialog("close");
+    }
+
+    CADControl1.cad.onprint = function (e) {
+        if (confirm('Are you sure?')) {
+            //printImage.src = e.printUrl;
+            if (e.printUrl)
+                window.open(e.printUrl, '', 'width=600,height=600');
+        }
+        return false;
+    }
+</script>
